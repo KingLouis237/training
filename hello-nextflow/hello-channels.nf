@@ -9,11 +9,11 @@ process sayHello {
     val greeting
 
     output:
-    path 'output.txt'
+    path "${greeting}_output.txt"
 
     script:
     """
-    echo '${greeting}' > output.txt
+    echo '${greeting}' > ${greeting}_output.txt
     """
 }
 
@@ -21,14 +21,25 @@ process sayHello {
  * Pipeline parameters
  */
 params {
-    input: String = 'Hola mundo!'
+    input: Path = 'data/greetings.csv'
 }
 
 workflow {
 
     main:
+
+// create an array
+    greetings_array= ['Hello', 'Bonjour']
+// create a new channel
+    greetings_ch = channel.fromPath(params.input)
+    .view { csv -> "Before splitCsv: $csv" }
+    .splitCsv()
+    .view {csv -> "After splitCsv: $csv" }
+    .map { row -> row[0] }
+    .view { greeting -> "After map: $greeting" }
+
     // emit a greeting
-    sayHello(params.input)
+    sayHello(greetings_ch)
 
     publish:
     first_output = sayHello.out
