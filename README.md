@@ -1,3 +1,30 @@
+# My Nextflow Training Progress
+
+This repository is my personal fork of the official Nextflow training repository.
+
+I am using it to document my progress through the Seqera/Nextflow training material, especially the **Hello Nextflow** training, using GitHub Codespaces.
+
+My goal is to build practical skills in reproducible workflow development for bioinformatics and genomics.
+
+## What I have practiced so far
+
+- Running basic Nextflow workflows
+- Understanding `process` blocks
+- Defining inputs and outputs
+- Working with channels
+- Using parameters
+- Connecting workflow steps
+- Running training examples in GitHub Codespaces
+- Building foundational skills for reproducible bioinformatics pipelines
+
+## My notes
+
+This repository is based on the official Nextflow/Seqera training material.  
+The original material is maintained by Seqera and the Nextflow community.  
+My own contribution here is my completed training work, practice commits, and learning documentation.
+
+---
+
 # Nextflow Training
 
 ## <https://training.nextflow.io>
