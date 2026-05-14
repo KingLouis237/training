@@ -3,6 +3,7 @@
 // Module INCLUDE statements
 include { SAMTOOLS_INDEX } from './modules/samtools_index.nf'
 include { GATK_HAPLOTYPECALLER } from './modules/gatk_haplotypecaller.nf'
+include { GATK_JOINTGENOTYPING } from './modules/gatk_jointgenotyping.nf'
 
 /*
  * Pipeline parameters
@@ -16,6 +17,10 @@ params {
     reference_index: Path
     reference_dict: Path
     intervals: Path
+
+    // Base name for final output file
+    cohort_name: String
+
 }
 
 // Primary input
@@ -24,52 +29,78 @@ workflow {
 
     main:
 
-    // Create input channel from a CSV file listing input file paths
+    // Create input channel from a CSV file listing input BAM file paths
     reads_ch = channel.fromPath(params.input)
-            .splitCsv(header: true)
-            .map { row -> file(row.reads_bam) }
+        .splitCsv(header: true)
+        .map { row -> file(row.reads_bam) }
 
-    // Load the file paths for the accessory files (reference and intervals)
+    // Load accessory files
     ref_file        = file(params.reference)
     ref_index_file  = file(params.reference_index)
     ref_dict_file   = file(params.reference_dict)
     intervals_file  = file(params.intervals)
 
-    // Call processes
+    // Step 1: index each BAM file
     SAMTOOLS_INDEX(reads_ch)
 
-    // temporary diagnostics
+    // Temporary diagnostics
     reads_ch.view()
     SAMTOOLS_INDEX.out.view()
 
-    // Call variants from the indexed BAM file
+    // Step 2: call variants per sample in GVCF mode
     GATK_HAPLOTYPECALLER(
-    SAMTOOLS_INDEX.out,
-    ref_file,
-    ref_index_file,
-    ref_dict_file,
-    intervals_file
-)
+        SAMTOOLS_INDEX.out,
+        ref_file,
+        ref_index_file,
+        ref_dict_file,
+        intervals_file
+    )
+
+    // Step 3: collect all per-sample GVCFs and indexes
+    all_gvcfs_ch = GATK_HAPLOTYPECALLER.out.vcf.collect()
+    all_idxs_ch  = GATK_HAPLOTYPECALLER.out.idx.collect()
+
+    // Step 4: joint genotype the cohort/family
+    GATK_JOINTGENOTYPING(
+        all_gvcfs_ch,
+        all_idxs_ch,
+        intervals_file,
+        params.cohort_name,
+        ref_file,
+        ref_index_file,
+        ref_dict_file
+    )
 
     publish:
+
     // Declare outputs to publish
     bam_index = SAMTOOLS_INDEX.out
-    vcf = GATK_HAPLOTYPECALLER.out.vcf
-    vcf_idx = GATK_HAPLOTYPECALLER.out.idx
+    gvcf = GATK_HAPLOTYPECALLER.out.vcf
+    gvcf_idx = GATK_HAPLOTYPECALLER.out.idx
+    joint_vcf = GATK_JOINTGENOTYPING.out.vcf
+    joint_vcf_idx = GATK_JOINTGENOTYPING.out.idx
 }
 
 output {
     // Configure publish targets
     bam_index {
-        path 'bam'
+        path 'bam_index'
         mode 'copy'
     }
-     vcf {
-        path 'vcf'
+     gvcf {
+        path 'gvcf'
         mode 'copy'
     }
-    vcf_idx {
-        path 'vcf'
+    gvcf_idx {
+        path 'gvcf'
+        mode 'copy'
+    }
+    joint_vcf {
+        path '.'
+        mode 'copy'
+    }
+    joint_vcf_idx {
+        path '.'
         mode 'copy'
     }
 }
