@@ -1,9 +1,11 @@
 #!/usr/bin/env nextflow
 
+
 // Include modules
-include { sayHello } from './modules/sayHello.nf'
-include { convertToUpper } from './modules/convertToUpper.nf'
-include { collectGreetings } from './modules/collectGreetings.nf'
+include { sayHello } from '/workspaces/training/hello-nextflow/modules/sayHello.nf'
+include { convertToUpper } from '/workspaces/training/hello-nextflow/modules/convertToUpper.nf'
+include { collectGreetings } from '/workspaces/training/hello-nextflow/modules/collectGreetings.nf'
+include { cowpy } from '/workspaces/training/hello-nextflow/modules/cowpy.nf'
 
 /*
  * Pipeline parameters
@@ -11,6 +13,7 @@ include { collectGreetings } from './modules/collectGreetings.nf'
 params {
     input: Path = 'data/greetings.csv'
     batch: String = 'batch'
+    character: String = 'moose'
 }
 
 workflow {
@@ -26,12 +29,15 @@ workflow {
     convertToUpper(sayHello.out)
     // collect all the greetings into one file
     collectGreetings(convertToUpper.out.collect(), params.batch)
+    // Run cowpy to generate ASCII art of the greetings
+    cowpy(collectGreetings.out.outfile, params.character)
 
     publish:
     first_output = sayHello.out
     uppercased = convertToUpper.out
     collected = collectGreetings.out.outfile
     batch_report = collectGreetings.out.report
+    mycowpy = cowpy.out
 }
 
 output {
@@ -48,6 +54,10 @@ output {
         mode 'copy'
     }
     batch_report {
+        path 'hello_containers'
+        mode 'copy'
+    }
+    mycowpy {
         path 'hello_containers'
         mode 'copy'
     }
